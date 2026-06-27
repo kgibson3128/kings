@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kings · Puzzle Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --rose:   #c4806a;
+    --rose-dim: #9a6050;
+    --bg:     #16131a;
+    --surface:#211d28;
+    --raised: #2a2535;
+    --border: #38313f;
+    --text:   #ede8f0;
+    --muted:  #8a7e94;
+    --dim:    #5a5263;
+    --tag-bg: #2e2040;
+  }
+
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 60px;
+  }
+
+  .header {
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px 16px;
+    text-align: center;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+    margin-bottom: 28px;
+  }
+  .header h1 {
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .header-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-weight: 300;
+    margin-top: 4px;
+  }
+
+  .game-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    padding: 0 16px;
+  }
+
+  .info-row {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .info-pill {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    font-weight: 300;
+  }
+  .info-pill span { color: var(--rose); font-weight: 500; }
+
+  .grid-container {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 32px rgba(0,0,0,0.35);
+  }
+
+  .grid {
+    display: grid;
+    gap: 2px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .cell {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: filter 0.1s, transform 0.1s;
+    position: relative;
+    font-size: 1.4rem;
+    user-select: none;
+    border: 1.5px solid rgba(0,0,0,0.18);
+  }
+  .cell:hover { filter: brightness(1.12); }
+  .cell:active { transform: scale(0.92); }
+
+  .cell-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.65);
+    pointer-events: none;
+  }
+  .cell-dot.auto {
+    background: rgba(255,255,255,0.35);
+  }
+
+  .cell-crown {
+    font-size: 1.4rem;
+    line-height: 1;
+    pointer-events: none;
+    transition: transform 0.15s ease;
+  }
+
+  .cell.has-conflict::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(210, 60, 60, 0.22);
+    pointer-events: none;
+  }
+
+  .conflict-pip {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #e05050;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .cell.has-conflict .conflict-pip { opacity: 1; }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+  }
+  .btn {
+    padding: 9px 20px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: 'Jost', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--muted);
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--rose); color: var(--rose); }
+  .btn.primary { background: var(--rose); border-color: var(--rose); color: white; }
+  .btn.primary:hover { background: var(--rose-dim); border-color: var(--rose-dim); color: white; }
+
+  .status {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    min-height: 22px;
+    text-align: center;
+  }
+  .status.error { color: #e07070; }
+  .status.success { color: #7abf7a; font-weight: 500; }
+
+  .win-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(16,13,20,0.88);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    backdrop-filter: blur(6px);
+  }
+  .win-overlay.show { display: flex; }
+  .win-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 40px 48px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 48px rgba(0,0,0,0.5);
+    text-align: center;
+    max-width: 320px;
+  }
+  .win-emoji { font-size: 3rem; margin-bottom: 12px; }
+  .win-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .win-sub {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 300;
+    margin-bottom: 24px;
+    letter-spacing: 0.3px;
+  }
+  .diff-label {
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-weight: 500;
+    background: #22183a;
+    color: #b090e0;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>👑 Kings</h1>
+  <div class="header-sub">One crown per region · per row · per column</div>
+</div>
+
+<div class="game-wrap">
+  <div class="info-row">
+    <div class="info-pill">Puzzle <span id="puzzleNum">1</span></div>
+    <div class="diff-label diff-hard">Hard · 8×8</div>
+  </div>
+
+  <div class="grid-container">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="status" id="status">Generating…</div>
+
+  <div class="controls">
+    <button class="btn" onclick="resetPuzzle()">Reset</button>
+    <button class="btn primary" onclick="showHint()">Hint</button>
+  </div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <div class="win-emoji">👑</div>
+    <div class="win-title">Puzzle solved!</div>
+    <div class="win-sub">Puzzle <span id="winNum">1</span> complete.</div>
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top: 8px;">
+      <button class="btn" onclick="closeWin()">Review</button>
+      <button class="btn primary" onclick="nextPuzzle()">Next puzzle →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── REGION COLOURS ───────────────────────────────────────────────────────────
+const REGION_COLOURS = [
+  { bg: '#3a2228', border: '#7a4050' }, // deep rose
+  { bg: '#1e3028', border: '#3a7055' }, // forest
+  { bg: '#1e2840', border: '#3a5080' }, // midnight blue
+  { bg: '#352c18', border: '#7a6030' }, // amber
+  { bg: '#2e2040', border: '#6040a0' }, // violet
+  { bg: '#183030', border: '#307070' }, // teal
+  { bg: '#2e3018', border: '#6a7030' }, // olive
+  { bg: '#38182e', border: '#803068' }, // plum
+  { bg: '#201838', border: '#504090' }, // indigo
+  { bg: '#301820', border: '#803040' }, // crimson
+];
+
+// ─── SEEDED RNG ───────────────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ─── PUZZLE GENERATOR ─────────────────────────────────────────────────────────
+// Generates a valid Kings puzzle of given size using a seeded RNG.
+// Strategy:
+//   1. Pick a valid crown placement (one per row, col, non-adjacent)
+//   2. Grow connected regions from each crown using flood-fill BFS
+//   3. Verify the puzzle has a unique solution via backtracking solver
+
+function generatePuzzle(size, seed, name) {
+  const rng = mulberry32(seed);
+
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const solution = generateSolution(size, rng);
+    if (!solution) continue;
+
+    const regions = growRegions(size, solution, rng);
+    if (!regions) continue;
+
+    // Verify unique solution
+    const solutions = solve(size, regions, 2);
+    if (solutions.length !== 1) continue;
+
+    return { name, difficulty: 'hard', size, regions, solution };
+  }
+  return null;
+}
+
+// Generate a valid crown placement: one per row, one per col, none adjacent
+function generateSolution(size, rng) {
+  // We need a permutation of cols (one crown per row, one per col)
+  // then filter by non-adjacency
+  const cols = Array.from({ length: size }, (_, i) => i);
+
+  for (let attempt = 0; attempt < 500; attempt++) {
+    shuffle(cols, rng);
+    const placement = cols.map((c, r) => [r, c]);
+    if (isValidPlacement(placement)) return placement;
+  }
+  return null;
+}
+
+function isValidPlacement(placement) {
+  for (let i = 0; i < placement.length; i++) {
+    for (let j = i + 1; j < placement.length; j++) {
+      const [r1, c1] = placement[i], [r2, c2] = placement[j];
+      if (Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1) return false;
+    }
+  }
+  return true;
+}
+
+// Grow regions from crown seeds using randomised BFS
+function growRegions(size, solution, rng) {
+  const regions = Array.from({ length: size }, () => Array(size).fill(-1));
+  const queues = solution.map(([r, c], i) => {
+    regions[r][c] = i;
+    return [[r, c]];
+  });
+
+  const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
+  let unfilled = size * size - size;
+  let iters = 0;
+
+  while (unfilled > 0 && iters++ < size * size * 10) {
+    // Pick a random non-empty queue
+    const active = queues.filter(q => q.length > 0);
+    if (active.length === 0) break;
+    shuffle(active, rng);
+    const q = active[0];
+
+    // Pop a random cell from this queue
+    const idx = Math.floor(rng() * q.length);
+    const [r, c] = q.splice(idx, 1)[0];
+
+    // Try to expand into unassigned neighbours
+    const dirs = shuffle([...DIRS], rng);
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+      if (regions[nr][nc] !== -1) continue;
+      regions[nr][nc] = regions[r][c];
+      queues[regions[r][c]].push([nr, nc]);
+      unfilled--;
+    }
+
+    // Put cell back if it still has unfilled neighbours
+    const hasUnfilled = DIRS.some(([dr, dc]) => {
+      const nr = r + dr, nc = c + dc;
+      return nr >= 0 && nr < size && nc >= 0 && nc < size && regions[nr][nc] === -1;
+    });
+    if (hasUnfilled) q.push([r, c]);
+  }
+
+  // Fail if any cell is unassigned
+  if (regions.some(row => row.includes(-1))) return null;
+  return regions;
+}
+
+// Backtracking solver — returns up to `limit` solutions
+function solve(size, regions, limit = 2) {
+  const solutions = [];
+  const usedCols = new Set();
+  const usedRegs = new Set();
+  const placement = [];
+
+  function bt(row) {
+    if (solutions.length >= limit) return;
+    if (row === size) {
+      solutions.push(placement.map(x => [...x]));
+      return;
+    }
+    for (let col = 0; col < size; col++) {
+      if (usedCols.has(col)) continue;
+      const reg = regions[row][col];
+      if (usedRegs.has(reg)) continue;
+      // Check adjacency with previous crown
+      if (placement.length > 0) {
+        const [pr, pc] = placement[placement.length - 1];
+        if (Math.abs(row - pr) <= 1 && Math.abs(col - pc) <= 1) continue;
+      }
+      // Check adjacency with all previous (not just last — needed for non-sequential rows)
+      let adjOk = true;
+      for (const [pr, pc] of placement) {
+        if (Math.abs(row - pr) <= 1 && Math.abs(col - pc) <= 1) { adjOk = false; break; }
+      }
+      if (!adjOk) continue;
+
+      placement.push([row, col]);
+      usedCols.add(col);
+      usedRegs.add(reg);
+      bt(row + 1);
+      placement.pop();
+      usedCols.delete(col);
+      usedRegs.delete(reg);
+    }
+  }
+
+  bt(0);
+  return solutions;
+}
+
+// ─── LEVEL CATALOGUE ─────────────────────────────────────────────────────────
+let puzzleCount = 0;
+let seedCounter = 0x5000000;
+let puzzle = null;
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let board = [];
+let autoDots = new Set();
+
+let drag = {
+  active: false,
+  action: null,
+  visited: new Set(),
+  startState: null,
+};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  loadNewPuzzle();
+}
+
+function loadNewPuzzle() {
+  setStatus('Generating…');
+  let p = null;
+  for (let i = 0; i < 1000; i++) {
+    p = generatePuzzle(8, seedCounter++, '');
+    if (p) break;
+  }
+  if (!p) { setStatus('Could not generate — refreshing…'); setTimeout(loadNewPuzzle, 500); return; }
+  puzzleCount++;
+  puzzle = p;
+  document.getElementById('puzzleNum').textContent = puzzleCount;
+  resetState();
+  renderGrid();
+  document.getElementById('winOverlay').classList.remove('show');
+}
+
+function resetState() {
+  board = Array.from({ length: puzzle.size }, () => Array(puzzle.size).fill(0));
+  autoDots = new Set();
+  setStatus('Click once to mark a dot · twice for a 👑');
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ─── AUTO-DOT LOGIC ───────────────────────────────────────────────────────────
+// Recalculate autoDots from scratch based on all current crowns
+function recalcAutoDots() {
+  autoDots = new Set();
+  for (let r = 0; r < puzzle.size; r++) {
+    for (let c = 0; c < puzzle.size; c++) {
+      if (board[r][c] === 2) {
+        addAutodotsForCrown(r, c);
+      }
+    }
+  }
+}
+
+function addAutodotsForCrown(cr, cc) {
+  // Entire row
+  for (let c = 0; c < puzzle.size; c++) {
+    if (c !== cc) autoDots.add(`${cr},${c}`);
+  }
+  // Entire column
+  for (let r = 0; r < puzzle.size; r++) {
+    if (r !== cr) autoDots.add(`${r},${cc}`);
+  }
+  // All 8 adjacent cells
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = cr + dr, nc = cc + dc;
+      if (nr >= 0 && nr < puzzle.size && nc >= 0 && nc < puzzle.size) {
+        autoDots.add(`${nr},${nc}`);
+      }
+    }
+  }
+}
+
+// ─── CELL INTERACTION ─────────────────────────────────────────────────────────
+
+// Single click (no drag): full cycle 0→1→2→0
+function clickCell(r, c) {
+  const current = board[r][c];
+  if (current === 0) {
+    board[r][c] = 1;
+  } else if (current === 1) {
+    board[r][c] = 2;
+    recalcAutoDots();
+  } else {
+    board[r][c] = 0;
+    recalcAutoDots();
+  }
+  renderGrid();
+  checkStatus();
+}
+
+// Drag entry into a cell: only affects dots (never crowns)
+function dragEnterCell(r, c) {
+  const key = `${r},${c}`;
+  if (drag.visited.has(key)) return;
+  drag.visited.add(key);
+
+  // Never touch crowns during a drag
+  if (board[r][c] === 2) return;
+
+  if (drag.action === 'dot') {
+    if (board[r][c] === 0) {
+      board[r][c] = 1;
+      renderGrid();
+      checkStatus();
+    }
+  } else if (drag.action === 'erase') {
+    if (board[r][c] === 1) {
+      board[r][c] = 0;
+      renderGrid();
+      checkStatus();
+    }
+  }
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${puzzle.size}, 56px)`;
+  grid.style.gridTemplateRows    = `repeat(${puzzle.size}, 56px)`;
+
+  const conflicts = getConflicts();
+
+  for (let r = 0; r < puzzle.size; r++) {
+    for (let c = 0; c < puzzle.size; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+
+      const regionIdx = puzzle.regions[r][c];
+      const colour = REGION_COLOURS[regionIdx % REGION_COLOURS.length];
+      cell.style.background  = colour.bg;
+      cell.style.borderColor = colour.border;
+
+      if (conflicts.has(`${r},${c}`)) cell.classList.add('has-conflict');
+
+      const state = board[r][c];
+      const isAutoDot = autoDots.has(`${r},${c}`);
+
+      if (state === 2) {
+        const crown = document.createElement('span');
+        crown.className = 'cell-crown';
+        crown.textContent = '👑';
+        cell.appendChild(crown);
+      } else if (state === 1) {
+        const dot = document.createElement('div');
+        dot.className = 'cell-dot';
+        cell.appendChild(dot);
+      } else if (isAutoDot) {
+        const dot = document.createElement('div');
+        dot.className = 'cell-dot auto';
+        cell.appendChild(dot);
+      }
+
+      const pip = document.createElement('div');
+      pip.className = 'conflict-pip';
+      cell.appendChild(pip);
+
+      // ── Mouse events ──
+      cell.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        drag.active = true;
+        drag.visited = new Set([`${r},${c}`]);
+        drag.startState = board[r][c]; // remember what it was before we touch it
+        // Decide drag action from first cell:
+        // manual dot → erase; anything else → paint dots
+        drag.action = (board[r][c] === 1) ? 'erase' : 'dot';
+        // Apply immediately unless it's a crown (crown handled on mouseup for clean click)
+        if (board[r][c] !== 2) {
+          if (drag.action === 'dot' && board[r][c] === 0) board[r][c] = 1;
+          else if (drag.action === 'erase') board[r][c] = 0;
+          renderGrid();
+          checkStatus();
+        }
+      });
+
+      cell.addEventListener('mouseenter', () => {
+        if (drag.active) dragEnterCell(r, c);
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+}
+
+// ─── DRAG END (global) ────────────────────────────────────────────────────────
+document.addEventListener('mouseup', () => {
+  if (!drag.active) return;
+  const wasSingleCell = drag.visited.size === 1;
+  if (wasSingleCell) {
+    const [key] = drag.visited;
+    const [r, c] = key.split(',').map(Number);
+    const orig = drag.startState;
+    // Crown: run full click cycle on mouseup
+    if (orig === 2) { clickCell(r, c); }
+    // Dot → crown: upgrade
+    else if (orig === 1) { /* already erased on mousedown; single click on dot should upgrade to crown */
+      board[r][c] = 2;
+      recalcAutoDots();
+      renderGrid();
+      checkStatus();
+    }
+    // Empty → dot: already handled on mousedown
+  }
+  drag.active = false;
+  drag.visited = new Set();
+  drag.action = null;
+  drag.startState = null;
+});
+
+// ─── TOUCH SUPPORT ────────────────────────────────────────────────────────────
+function cellAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return null;
+  const cell = el.closest('.cell');
+  if (!cell) return null;
+  const cells = [...document.querySelectorAll('.cell')];
+  const idx = cells.indexOf(cell);
+  if (idx === -1) return null;
+  return { r: Math.floor(idx / puzzle.size), c: idx % puzzle.size };
+}
+
+document.getElementById('grid').addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const pos = cellAt(t.clientX, t.clientY);
+  if (!pos) return;
+  const { r, c } = pos;
+  drag.active = true;
+  drag.visited = new Set([`${r},${c}`]);
+  drag.startState = board[r][c];
+  drag.action = (board[r][c] === 1) ? 'erase' : 'dot';
+  if (board[r][c] !== 2) {
+    if (drag.action === 'dot' && board[r][c] === 0) board[r][c] = 1;
+    else if (drag.action === 'erase') board[r][c] = 0;
+    renderGrid(); checkStatus();
+  }
+}, { passive: false });
+
+document.getElementById('grid').addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!drag.active) return;
+  const t = e.touches[0];
+  const pos = cellAt(t.clientX, t.clientY);
+  if (!pos) return;
+  dragEnterCell(pos.r, pos.c);
+}, { passive: false });
+
+document.getElementById('grid').addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (drag.visited.size === 1) {
+    const [key] = drag.visited;
+    const [r, c] = key.split(',').map(Number);
+    const orig = drag.startState;
+    if (orig === 2) { clickCell(r, c); }
+    else if (orig === 1) {
+      board[r][c] = 2;
+      recalcAutoDots();
+      renderGrid();
+      checkStatus();
+    }
+  }
+  drag.active = false;
+  drag.visited = new Set();
+  drag.action = null;
+  drag.startState = null;
+}, { passive: false });
+
+// ─── CONFLICT DETECTION ───────────────────────────────────────────────────────
+function getConflicts() {
+  const bad = new Set();
+  const crowns = [];
+  for (let r = 0; r < puzzle.size; r++)
+    for (let c = 0; c < puzzle.size; c++)
+      if (board[r][c] === 2) crowns.push([r, c]);
+
+  const rowCount = {}, colCount = {}, regCount = {};
+  for (const [r, c] of crowns) {
+    rowCount[r] = (rowCount[r] || 0) + 1;
+    colCount[c] = (colCount[c] || 0) + 1;
+    const reg = puzzle.regions[r][c];
+    regCount[reg] = (regCount[reg] || 0) + 1;
+  }
+
+  for (const [r, c] of crowns) {
+    const reg = puzzle.regions[r][c];
+    if (rowCount[r] > 1 || colCount[c] > 1 || regCount[reg] > 1) bad.add(`${r},${c}`);
+    for (const [r2, c2] of crowns) {
+      if (r === r2 && c === c2) continue;
+      if (Math.abs(r - r2) <= 1 && Math.abs(c - c2) <= 1) {
+        bad.add(`${r},${c}`);
+        bad.add(`${r2},${c2}`);
+      }
+    }
+  }
+  return bad;
+}
+
+// ─── STATUS / WIN ─────────────────────────────────────────────────────────────
+function checkStatus() {
+  const crowns = [];
+  for (let r = 0; r < puzzle.size; r++)
+    for (let c = 0; c < puzzle.size; c++)
+      if (board[r][c] === 2) crowns.push([r, c]);
+
+  const needed = puzzle.size;
+  const conflicts = getConflicts();
+
+  if (conflicts.size > 0) {
+    setStatus('Conflict detected — check highlighted crowns', 'error');
+    return;
+  }
+  if (crowns.length < needed) {
+    setStatus(crowns.length === 0
+      ? 'Click once to mark a dot · twice for a 👑'
+      : `${crowns.length} of ${needed} crowns placed`);
+    return;
+  }
+  if (crowns.length === needed) {
+    const regionsCovered = new Set(crowns.map(([r, c]) => puzzle.regions[r][c]));
+    if (regionsCovered.size === needed) { triggerWin(); return; }
+  }
+  setStatus(`${crowns.length} of ${needed} crowns placed`);
+}
+
+function triggerWin() {
+  document.getElementById('winNum').textContent = puzzleCount;
+  document.getElementById('winOverlay').classList.add('show');
+}
+
+function closeWin() { document.getElementById('winOverlay').classList.remove('show'); }
+
+function nextPuzzle() {
+  closeWin();
+  loadNewPuzzle();
+}
+
+function resetPuzzle() {
+  resetState();
+  renderGrid();
+}
+
+function showHint() {
+  for (const [r, c] of puzzle.solution) {
+    if (board[r][c] !== 2) {
+      const reg = puzzle.regions[r][c];
+      setStatus(`Hint: look at region ${reg + 1}`);
+      document.querySelectorAll('.cell').forEach((cell, i) => {
+        const cr = Math.floor(i / puzzle.size), cc = i % puzzle.size;
+        if (puzzle.regions[cr][cc] === reg && board[cr][cc] !== 2) {
+          cell.style.filter = 'brightness(1.35)';
+          setTimeout(() => cell.style.filter = '', 700);
+        }
+      });
+      return;
+    }
+  }
+  setStatus('Looking good — keep going!');
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+init();
+</script>
+</body>
+</html>
