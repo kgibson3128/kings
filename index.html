@@ -9,16 +9,35 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --rose:   #c4806a;
+    --rose:     #c4806a;
+    --rose-dim: #b5705a;
+    --bg:       #f9f5f2;
+    --surface:  #ffffff;
+    --raised:   #fdf5f0;
+    --border:   #f0e8e3;
+    --text:     #3a2e28;
+    --muted:    #b08b7a;
+    --dim:      #d4b8ae;
+    --tag-bg:   #fdf0ea;
+    --dot:      rgba(0,0,0,0.28);
+    --dot-auto: rgba(0,0,0,0.13);
+    --cell-hover: brightness(0.93);
+  }
+
+  :root.dark {
+    --rose:     #c4806a;
     --rose-dim: #9a6050;
-    --bg:     #16131a;
-    --surface:#211d28;
-    --raised: #2a2535;
-    --border: #38313f;
-    --text:   #ede8f0;
-    --muted:  #8a7e94;
-    --dim:    #5a5263;
-    --tag-bg: #2e2040;
+    --bg:       #16131a;
+    --surface:  #211d28;
+    --raised:   #2a2535;
+    --border:   #38313f;
+    --text:     #ede8f0;
+    --muted:    #8a7e94;
+    --dim:      #5a5263;
+    --tag-bg:   #2e2040;
+    --dot:      rgba(255,255,255,0.65);
+    --dot-auto: rgba(255,255,255,0.35);
+    --cell-hover: brightness(1.12);
   }
 
   body {
@@ -36,10 +55,11 @@
     width: 100%;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 20px 24px 16px;
+    padding: 48px 24px 18px;
     text-align: center;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     margin-bottom: 28px;
+    position: relative;
   }
   .header h1 {
     font-family: 'Jost', sans-serif;
@@ -56,6 +76,27 @@
     font-weight: 300;
     margin-top: 4px;
   }
+
+  /* Day/night toggle */
+  .theme-toggle {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'Jost', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.3px;
+  }
+  .theme-toggle:hover { border-color: var(--rose); color: var(--rose); }
 
   .game-wrap {
     display: flex;
@@ -108,18 +149,18 @@
     user-select: none;
     border: 1.5px solid rgba(0,0,0,0.18);
   }
-  .cell:hover { filter: brightness(1.12); }
+  .cell:hover { filter: var(--cell-hover); }
   .cell:active { transform: scale(0.92); }
 
   .cell-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.65);
+    background: var(--dot);
     pointer-events: none;
   }
   .cell-dot.auto {
-    background: rgba(255,255,255,0.35);
+    background: var(--dot-auto);
   }
 
   .cell-crown {
@@ -187,7 +228,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(16,13,20,0.88);
+    background: var(--bg);
     z-index: 200;
     flex-direction: column;
     align-items: center;
@@ -227,8 +268,8 @@
     padding: 2px 10px;
     border-radius: 10px;
     font-weight: 500;
-    background: #22183a;
-    color: #b090e0;
+    background: #f0eafa;
+    color: #8060b0;
   }
 </style>
 </head>
@@ -237,6 +278,7 @@
 <div class="header">
   <h1>👑 Kings</h1>
   <div class="header-sub">One crown per region · per row · per column</div>
+  <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">☀️ Day</button>
 </div>
 
 <div class="game-wrap">
@@ -271,18 +313,36 @@
 
 <script>
 // ─── REGION COLOURS ───────────────────────────────────────────────────────────
-const REGION_COLOURS = [
-  { bg: '#3a2228', border: '#7a4050' }, // deep rose
-  { bg: '#1e3028', border: '#3a7055' }, // forest
-  { bg: '#1e2840', border: '#3a5080' }, // midnight blue
-  { bg: '#352c18', border: '#7a6030' }, // amber
-  { bg: '#2e2040', border: '#6040a0' }, // violet
-  { bg: '#183030', border: '#307070' }, // teal
-  { bg: '#2e3018', border: '#6a7030' }, // olive
-  { bg: '#38182e', border: '#803068' }, // plum
-  { bg: '#201838', border: '#504090' }, // indigo
-  { bg: '#301820', border: '#803040' }, // crimson
+const REGION_COLOURS_LIGHT = [
+  { bg: '#f7ddd5', border: '#d4a090' },
+  { bg: '#d5e8d5', border: '#8aba8a' },
+  { bg: '#d5e0f0', border: '#8aaad4' },
+  { bg: '#f0e8d5', border: '#c8a860' },
+  { bg: '#e8d5f0', border: '#b48ac8' },
+  { bg: '#d5f0ee', border: '#70bab8' },
+  { bg: '#f0f0d5', border: '#b0b060' },
+  { bg: '#f0d5e8', border: '#c880a8' },
+  { bg: '#e0d5f0', border: '#9080c8' },
+  { bg: '#f5e0d0', border: '#c89070' },
 ];
+
+const REGION_COLOURS_DARK = [
+  { bg: '#3a2228', border: '#7a4050' },
+  { bg: '#1e3028', border: '#3a7055' },
+  { bg: '#1e2840', border: '#3a5080' },
+  { bg: '#352c18', border: '#7a6030' },
+  { bg: '#2e2040', border: '#6040a0' },
+  { bg: '#183030', border: '#307070' },
+  { bg: '#2e3018', border: '#6a7030' },
+  { bg: '#38182e', border: '#803068' },
+  { bg: '#201838', border: '#504090' },
+  { bg: '#301820', border: '#803040' },
+];
+
+function getRegionColours() {
+  return document.documentElement.classList.contains('dark')
+    ? REGION_COLOURS_DARK : REGION_COLOURS_LIGHT;
+}
 
 // ─── SEEDED RNG ───────────────────────────────────────────────────────────────
 function mulberry32(seed) {
@@ -501,22 +561,18 @@ function recalcAutoDots() {
 }
 
 function addAutodotsForCrown(cr, cc) {
-  // Entire row
-  for (let c = 0; c < puzzle.size; c++) {
-    if (c !== cc) autoDots.add(`${cr},${c}`);
-  }
-  // Entire column
+  const crownRegion = puzzle.regions[cr][cc];
   for (let r = 0; r < puzzle.size; r++) {
-    if (r !== cr) autoDots.add(`${r},${cc}`);
-  }
-  // All 8 adjacent cells
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = cr + dr, nc = cc + dc;
-      if (nr >= 0 && nr < puzzle.size && nc >= 0 && nc < puzzle.size) {
-        autoDots.add(`${nr},${nc}`);
-      }
+    for (let c = 0; c < puzzle.size; c++) {
+      if (r === cr && c === cc) continue;
+      // Entire row
+      if (r === cr) { autoDots.add(`${r},${c}`); continue; }
+      // Entire column
+      if (c === cc) { autoDots.add(`${r},${c}`); continue; }
+      // Entire region
+      if (puzzle.regions[r][c] === crownRegion) { autoDots.add(`${r},${c}`); continue; }
+      // All 8 adjacent cells
+      if (Math.abs(r - cr) <= 1 && Math.abs(c - cc) <= 1) { autoDots.add(`${r},${c}`); }
     }
   }
 }
@@ -578,7 +634,7 @@ function renderGrid() {
       cell.className = 'cell';
 
       const regionIdx = puzzle.regions[r][c];
-      const colour = REGION_COLOURS[regionIdx % REGION_COLOURS.length];
+      const colour = getRegionColours()[regionIdx % getRegionColours().length];
       cell.style.background  = colour.bg;
       cell.style.borderColor = colour.border;
 
@@ -812,6 +868,15 @@ function setStatus(msg, type = '') {
   const el = document.getElementById('status');
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
+}
+
+// ─── THEME TOGGLE ────────────────────────────────────────────────────────────
+let isDark = false;
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.classList.toggle('dark', isDark);
+  document.getElementById('themeToggle').textContent = isDark ? '🌙 Night' : '☀️ Day';
+  renderGrid(); // re-render so region colours update
 }
 
 init();
