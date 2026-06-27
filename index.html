@@ -123,9 +123,10 @@
   .grid-container {
     background: var(--surface);
     border-radius: 16px;
-    padding: 16px;
+    padding: 12px;
     border: 1px solid var(--border);
-    box-shadow: 0 4px 32px rgba(0,0,0,0.35);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    max-width: 100%;
   }
 
   .grid {
@@ -137,24 +138,26 @@
   }
 
   .cell {
-    width: 56px;
-    height: 56px;
+    width: var(--cell-size, 56px);
+    height: var(--cell-size, 56px);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: filter 0.1s, transform 0.1s;
     position: relative;
-    font-size: 1.4rem;
+    font-size: calc(var(--cell-size, 56px) * 0.5);
     user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
     border: 1.5px solid rgba(0,0,0,0.18);
   }
   .cell:hover { filter: var(--cell-hover); }
   .cell:active { transform: scale(0.92); }
 
   .cell-dot {
-    width: 10px;
-    height: 10px;
+    width: calc(var(--cell-size, 56px) * 0.18);
+    height: calc(var(--cell-size, 56px) * 0.18);
     border-radius: 50%;
     background: var(--dot);
     pointer-events: none;
@@ -535,6 +538,7 @@ function loadNewPuzzle() {
   puzzle = p;
   document.getElementById('puzzleNum').textContent = puzzleCount;
   resetState();
+  setCellSize();
   renderGrid();
   document.getElementById('winOverlay').classList.remove('show');
 }
@@ -632,6 +636,8 @@ function renderGrid() {
     for (let c = 0; c < puzzle.size; c++) {
       const cell = document.createElement('div');
       cell.className = 'cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
 
       const regionIdx = puzzle.regions[r][c];
       const colour = getRegionColours()[regionIdx % getRegionColours().length];
@@ -715,22 +721,22 @@ document.addEventListener('mouseup', () => {
 });
 
 // ─── TOUCH SUPPORT ────────────────────────────────────────────────────────────
+// Listeners are on document so they survive renderGrid() rebuilding the DOM
+
 function cellAt(x, y) {
+  // Use elementFromPoint — works even after DOM rebuild
   const el = document.elementFromPoint(x, y);
   if (!el) return null;
-  const cell = el.closest('.cell');
+  const cell = el.closest ? el.closest('[data-r]') : null;
   if (!cell) return null;
-  const cells = [...document.querySelectorAll('.cell')];
-  const idx = cells.indexOf(cell);
-  if (idx === -1) return null;
-  return { r: Math.floor(idx / puzzle.size), c: idx % puzzle.size };
+  return { r: parseInt(cell.dataset.r), c: parseInt(cell.dataset.c) };
 }
 
-document.getElementById('grid').addEventListener('touchstart', (e) => {
-  e.preventDefault();
+document.addEventListener('touchstart', (e) => {
   const t = e.touches[0];
   const pos = cellAt(t.clientX, t.clientY);
-  if (!pos) return;
+  if (!pos) return; // touch outside grid — ignore, don't preventDefault
+  e.preventDefault();
   const { r, c } = pos;
   drag.active = true;
   drag.visited = new Set([`${r},${c}`]);
@@ -743,16 +749,17 @@ document.getElementById('grid').addEventListener('touchstart', (e) => {
   }
 }, { passive: false });
 
-document.getElementById('grid').addEventListener('touchmove', (e) => {
-  e.preventDefault();
+document.addEventListener('touchmove', (e) => {
   if (!drag.active) return;
+  e.preventDefault();
   const t = e.touches[0];
   const pos = cellAt(t.clientX, t.clientY);
   if (!pos) return;
   dragEnterCell(pos.r, pos.c);
 }, { passive: false });
 
-document.getElementById('grid').addEventListener('touchend', (e) => {
+document.addEventListener('touchend', (e) => {
+  if (!drag.active) return;
   e.preventDefault();
   if (drag.visited.size === 1) {
     const [key] = drag.visited;
@@ -869,6 +876,17 @@ function setStatus(msg, type = '') {
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
 }
+
+// ─── RESPONSIVE CELL SIZE ────────────────────────────────────────────────────
+function setCellSize() {
+  if (!puzzle) return;
+  // Available width: screen minus padding (32px) minus grid-container padding (24px) minus grid border (4px)
+  const available = Math.min(window.innerWidth - 60, 520);
+  const cellSize = Math.floor((available - (puzzle.size - 1) * 2) / puzzle.size);
+  document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
+}
+
+window.addEventListener('resize', () => { setCellSize(); renderGrid(); });
 
 // ─── THEME TOGGLE ────────────────────────────────────────────────────────────
 let isDark = false;
