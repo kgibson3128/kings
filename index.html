@@ -123,41 +123,42 @@
   .grid-container {
     background: var(--surface);
     border-radius: 16px;
-    padding: 12px;
+    padding: 10px;
     border: 1px solid var(--border);
     box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-    max-width: 100%;
+    /* Size itself to the grid contents */
+    display: inline-block;
   }
 
   .grid {
     display: grid;
-    gap: 2px;
-    border: 2px solid var(--border);
-    border-radius: 6px;
+    gap: 1px;
+    border-radius: 4px;
     overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--grid-gap);
   }
 
   .cell {
-    width: var(--cell-size, 56px);
-    height: var(--cell-size, 56px);
+    width: var(--cell-size);
+    height: var(--cell-size);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: filter 0.1s, transform 0.1s;
     position: relative;
-    font-size: calc(var(--cell-size, 56px) * 0.5);
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
     border: 1.5px solid rgba(0,0,0,0.18);
   }
   .cell:hover { filter: var(--cell-hover); }
-  .cell:active { transform: scale(0.92); }
+  .cell:active { transform: scale(0.94); }
 
   .cell-dot {
-    width: calc(var(--cell-size, 56px) * 0.18);
-    height: calc(var(--cell-size, 56px) * 0.18);
+    width: 18%;
+    height: 18%;
     border-radius: 50%;
     background: var(--dot);
     pointer-events: none;
@@ -167,10 +168,9 @@
   }
 
   .cell-crown {
-    font-size: 1.4rem;
+    font-size: calc(var(--cell-size) * 0.52);
     line-height: 1;
     pointer-events: none;
-    transition: transform 0.15s ease;
   }
 
   .cell.has-conflict::after {
@@ -317,29 +317,29 @@
 <script>
 // ─── REGION COLOURS ───────────────────────────────────────────────────────────
 const REGION_COLOURS_LIGHT = [
-  { bg: '#f7ddd5', border: '#d4a090' },
-  { bg: '#d5e8d5', border: '#8aba8a' },
-  { bg: '#d5e0f0', border: '#8aaad4' },
-  { bg: '#f0e8d5', border: '#c8a860' },
-  { bg: '#e8d5f0', border: '#b48ac8' },
-  { bg: '#d5f0ee', border: '#70bab8' },
-  { bg: '#f0f0d5', border: '#b0b060' },
-  { bg: '#f0d5e8', border: '#c880a8' },
-  { bg: '#e0d5f0', border: '#9080c8' },
-  { bg: '#f5e0d0', border: '#c89070' },
+  { bg: '#f5b8a0', border: '#c04828' }, // rose
+  { bg: '#a0dca0', border: '#389838' }, // sage
+  { bg: '#a0c8f5', border: '#3070c8' }, // blue
+  { bg: '#f5d878', border: '#b88018' }, // amber
+  { bg: '#d0a0f5', border: '#8830c8' }, // violet
+  { bg: '#80ddd8', border: '#189890' }, // teal
+  { bg: '#d8e880', border: '#809000' }, // lime
+  { bg: '#f5a0d0', border: '#c01890' }, // pink
+  { bg: '#b8a0f5', border: '#5830c8' }, // periwinkle
+  { bg: '#f5a8a8', border: '#c02828' }, // coral
 ];
 
 const REGION_COLOURS_DARK = [
-  { bg: '#3a2228', border: '#7a4050' },
-  { bg: '#1e3028', border: '#3a7055' },
-  { bg: '#1e2840', border: '#3a5080' },
-  { bg: '#352c18', border: '#7a6030' },
-  { bg: '#2e2040', border: '#6040a0' },
-  { bg: '#183030', border: '#307070' },
-  { bg: '#2e3018', border: '#6a7030' },
-  { bg: '#38182e', border: '#803068' },
-  { bg: '#201838', border: '#504090' },
-  { bg: '#301820', border: '#803040' },
+  { bg: '#6a1828', border: '#e05068' }, // rose
+  { bg: '#105c28', border: '#30c058' }, // forest
+  { bg: '#102858', border: '#3078d8' }, // blue
+  { bg: '#583800', border: '#d89018' }, // amber
+  { bg: '#3a1060', border: '#9040d8' }, // violet
+  { bg: '#003c3c', border: '#18b0a8' }, // teal
+  { bg: '#383c00', border: '#98b010' }, // lime
+  { bg: '#580838', border: '#d82898' }, // pink
+  { bg: '#181858', border: '#6050d8' }, // indigo
+  { bg: '#580808', border: '#d83030' }, // crimson
 ];
 
 function getRegionColours() {
@@ -507,7 +507,7 @@ function solve(size, regions, limit = 2) {
 
 // ─── LEVEL CATALOGUE ─────────────────────────────────────────────────────────
 let puzzleCount = 0;
-let seedCounter = 0x5000000;
+let seedCounter = Date.now() & 0xFFFFFFFF; // random start so every session gets fresh puzzles
 let puzzle = null;
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -538,8 +538,11 @@ function loadNewPuzzle() {
   puzzle = p;
   document.getElementById('puzzleNum').textContent = puzzleCount;
   resetState();
-  setCellSize();
-  renderGrid();
+  // Use rAF so layout has settled before we measure for cell size
+  requestAnimationFrame(() => {
+    setCellSize();
+    renderGrid();
+  });
   document.getElementById('winOverlay').classList.remove('show');
 }
 
@@ -627,8 +630,8 @@ function dragEnterCell(r, c) {
 function renderGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
-  grid.style.gridTemplateColumns = `repeat(${puzzle.size}, 56px)`;
-  grid.style.gridTemplateRows    = `repeat(${puzzle.size}, 56px)`;
+  grid.style.gridTemplateColumns = `repeat(${puzzle.size}, var(--cell-size))`;
+  grid.style.gridTemplateRows    = `repeat(${puzzle.size}, var(--cell-size))`;
 
   const conflicts = getConflicts();
 
@@ -670,6 +673,7 @@ function renderGrid() {
 
       // ── Mouse events ──
       cell.addEventListener('mousedown', (e) => {
+        if (e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents === false) return;
         e.preventDefault();
         drag.active = true;
         drag.visited = new Set([`${r},${c}`]);
@@ -721,10 +725,13 @@ document.addEventListener('mouseup', () => {
 });
 
 // ─── TOUCH SUPPORT ────────────────────────────────────────────────────────────
-// Listeners are on document so they survive renderGrid() rebuilding the DOM
+// All touch listeners on document so they survive renderGrid() DOM rebuilds.
+// We never call renderGrid() until touchend to avoid mid-gesture DOM rebuilds
+// confusing elementFromPoint, and to avoid iOS synthetic click events cycling state.
+
+let suppressNextClick = false; // block synthetic click that iOS fires after touchend
 
 function cellAt(x, y) {
-  // Use elementFromPoint — works even after DOM rebuild
   const el = document.elementFromPoint(x, y);
   if (!el) return null;
   const cell = el.closest ? el.closest('[data-r]') : null;
@@ -732,20 +739,29 @@ function cellAt(x, y) {
   return { r: parseInt(cell.dataset.r), c: parseInt(cell.dataset.c) };
 }
 
+// Suppress iOS synthetic clicks that fire after touchend
+document.addEventListener('click', (e) => {
+  if (suppressNextClick) {
+    suppressNextClick = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }
+}, true); // capture phase so it runs before mousedown handlers
+
 document.addEventListener('touchstart', (e) => {
   const t = e.touches[0];
   const pos = cellAt(t.clientX, t.clientY);
-  if (!pos) return; // touch outside grid — ignore, don't preventDefault
+  if (!pos) return;
   e.preventDefault();
   const { r, c } = pos;
   drag.active = true;
   drag.visited = new Set([`${r},${c}`]);
   drag.startState = board[r][c];
   drag.action = (board[r][c] === 1) ? 'erase' : 'dot';
+  // Don't renderGrid() here — update board state only, render on touchend
   if (board[r][c] !== 2) {
     if (drag.action === 'dot' && board[r][c] === 0) board[r][c] = 1;
     else if (drag.action === 'erase') board[r][c] = 0;
-    renderGrid(); checkStatus();
   }
 }, { passive: false });
 
@@ -755,24 +771,44 @@ document.addEventListener('touchmove', (e) => {
   const t = e.touches[0];
   const pos = cellAt(t.clientX, t.clientY);
   if (!pos) return;
-  dragEnterCell(pos.r, pos.c);
+  // Update board state for drag without re-rendering (fast)
+  const { r, c } = pos;
+  const key = `${r},${c}`;
+  if (!drag.visited.has(key)) {
+    drag.visited.add(key);
+    if (board[r][c] !== 2) { // never touch crowns
+      if (drag.action === 'dot' && board[r][c] === 0) board[r][c] = 1;
+      else if (drag.action === 'erase' && board[r][c] === 1) board[r][c] = 0;
+    }
+  }
 }, { passive: false });
 
 document.addEventListener('touchend', (e) => {
   if (!drag.active) return;
   e.preventDefault();
+  suppressNextClick = true;
+
+  const orig = drag.startState;
   if (drag.visited.size === 1) {
+    // Single tap — full click cycle
     const [key] = drag.visited;
     const [r, c] = key.split(',').map(Number);
-    const orig = drag.startState;
-    if (orig === 2) { clickCell(r, c); }
-    else if (orig === 1) {
+    if (orig === 2) {
+      // Crown → clear
+      board[r][c] = 0;
+      recalcAutoDots();
+    } else if (orig === 1) {
+      // Dot → crown
       board[r][c] = 2;
       recalcAutoDots();
-      renderGrid();
-      checkStatus();
     }
+    // orig === 0: already set to dot in touchstart
   }
+  // For drags (visited.size > 1): board already updated cell-by-cell in touchmove
+
+  renderGrid();
+  checkStatus();
+
   drag.active = false;
   drag.visited = new Set();
   drag.action = null;
@@ -880,9 +916,11 @@ function setStatus(msg, type = '') {
 // ─── RESPONSIVE CELL SIZE ────────────────────────────────────────────────────
 function setCellSize() {
   if (!puzzle) return;
-  // Available width: screen minus padding (32px) minus grid-container padding (24px) minus grid border (4px)
-  const available = Math.min(window.innerWidth - 60, 520);
-  const cellSize = Math.floor((available - (puzzle.size - 1) * 2) / puzzle.size);
+  // Use the game-wrap's actual rendered width, minus container padding and border
+  const wrap = document.querySelector('.game-wrap');
+  const wrapWidth = wrap ? wrap.getBoundingClientRect().width : window.innerWidth;
+  const available = Math.min(wrapWidth - 52, 500); // 32px page padding + 20px container padding
+  const cellSize = Math.floor(available / puzzle.size);
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 
@@ -894,7 +932,15 @@ function toggleTheme() {
   isDark = !isDark;
   document.documentElement.classList.toggle('dark', isDark);
   document.getElementById('themeToggle').textContent = isDark ? '🌙 Night' : '☀️ Day';
-  renderGrid(); // re-render so region colours update
+  // Update region colours in place — no DOM rebuild needed
+  const colours = getRegionColours();
+  document.querySelectorAll('.cell[data-r]').forEach(cell => {
+    const r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
+    const regionIdx = puzzle.regions[r][c];
+    const colour = colours[regionIdx % colours.length];
+    cell.style.background = colour.bg;
+    cell.style.borderColor = colour.border;
+  });
 }
 
 init();
