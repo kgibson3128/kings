@@ -761,14 +761,16 @@ function cellAt(x, y) {
   return { r: parseInt(cell.dataset.r), c: parseInt(cell.dataset.c) };
 }
 
-// Suppress iOS synthetic clicks that fire after touchend
+// Suppress iOS synthetic clicks that fire after touchend — only on grid cells
 document.addEventListener('click', (e) => {
   if (suppressNextClick) {
     suppressNextClick = false;
-    e.stopPropagation();
-    e.preventDefault();
+    if (e.target.closest('[data-r]')) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
   }
-}, true); // capture phase so it runs before mousedown handlers
+}, true);
 
 document.addEventListener('touchstart', (e) => {
   const t = e.touches[0];
