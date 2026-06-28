@@ -156,7 +156,9 @@
     touch-action: none;
     border: 1.5px solid rgba(0,0,0,0.18);
   }
-  .cell:hover { filter: var(--cell-hover); }
+  @media (hover: hover) {
+    .cell:hover { filter: var(--cell-hover); }
+  }
 
   .cell-dot {
     width: 18%;
@@ -276,6 +278,23 @@
     background: #f0eafa;
     color: #8060b0;
   }
+
+  /* Loading spinner */
+  .spinner {
+    display: none;
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--rose);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .spinner.show { display: block; }
+
 </style>
 </head>
 <body>
@@ -309,9 +328,10 @@
     <div class="win-emoji">👑</div>
     <div class="win-title">Puzzle solved!</div>
     <div class="win-sub">Puzzle <span id="winNum">1</span> complete.</div>
-    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top: 8px;">
+    <div id="winSpinner" class="spinner"></div>
+    <div id="winButtons" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top: 8px;">
       <button class="btn" onclick="closeWin()">Review</button>
-      <button class="btn primary" onclick="nextPuzzle()">Next puzzle →</button>
+      <button class="btn primary" id="nextBtn" onclick="nextPuzzle()">Next puzzle →</button>
     </div>
   </div>
 </div>
@@ -876,14 +896,23 @@ function checkStatus() {
 
 function triggerWin() {
   document.getElementById('winNum').textContent = puzzleCount;
+  // Reset spinner state
+  document.getElementById('winSpinner').classList.remove('show');
+  document.getElementById('winButtons').style.display = 'flex';
   document.getElementById('winOverlay').classList.add('show');
 }
 
 function closeWin() { document.getElementById('winOverlay').classList.remove('show'); }
 
 function nextPuzzle() {
-  closeWin();
-  loadNewPuzzle();
+  // Show spinner, hide buttons while generating
+  document.getElementById('winSpinner').classList.add('show');
+  document.getElementById('winButtons').style.display = 'none';
+  // Let the spinner render before the generation blocks the thread
+  setTimeout(() => {
+    closeWin();
+    loadNewPuzzle();
+  }, 50);
 }
 
 function resetPuzzle() {
